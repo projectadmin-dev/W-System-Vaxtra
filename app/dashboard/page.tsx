@@ -132,11 +132,11 @@ export default async function DashboardPage() {
               <CardDescription>Get started</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button className="w-full" variant="default">
-                Create Project
+              <Button className="w-full" variant="default" asChild>
+                <a href="/projects">Create Project</a>
               </Button>
-              <Button className="w-full" variant="outline">
-                View All Tasks
+              <Button className="w-full" variant="outline" asChild>
+                <a href="/projects">View All Projects</a>
               </Button>
             </CardContent>
           </Card>
