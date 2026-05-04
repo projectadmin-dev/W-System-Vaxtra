@@ -2,29 +2,29 @@
 -- Created: 2026-05-04
 -- Purpose: Multi-tenant project management with proper RLS isolation
 
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Enable UUID extension (Supabase already has this)
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;
 
 -- ═══════════════════════════════════════════════════════
 -- 1. TENANTS TABLE (Companies/Organizations)
 -- ═══════════════════════════════════════════════════════
 
-CREATE TABLE tenants (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE IF NOT EXISTS tenants (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
-  slug TEXT UNIQUE NOT NULL, -- for URL-friendly tenant identification
+  slug TEXT UNIQUE NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Index for faster lookups
-CREATE INDEX idx_tenants_slug ON tenants(slug);
+CREATE INDEX IF NOT EXISTS idx_tenants_slug ON tenants(slug);
 
 -- ═══════════════════════════════════════════════════════
 -- 2. USERS TABLE (linked to Supabase Auth + Tenants)
 -- ═══════════════════════════════════════════════════════
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT auth.uid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
@@ -36,15 +36,15 @@ CREATE TABLE users (
 );
 
 -- Indexes
-CREATE INDEX idx_users_tenant_id ON users(tenant_id);
-CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_tenant_id ON users(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
 -- ═══════════════════════════════════════════════════════
 -- 3. PROJECTS TABLE
 -- ═══════════════════════════════════════════════════════
 
-CREATE TABLE projects (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE IF NOT EXISTS projects (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT,
@@ -57,16 +57,16 @@ CREATE TABLE projects (
 );
 
 -- Indexes
-CREATE INDEX idx_projects_tenant_id ON projects(tenant_id);
-CREATE INDEX idx_projects_status ON projects(status);
-CREATE INDEX idx_projects_owner_id ON projects(owner_id);
+CREATE INDEX IF NOT EXISTS idx_projects_tenant_id ON projects(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
+CREATE INDEX IF NOT EXISTS idx_projects_owner_id ON projects(owner_id);
 
 -- ═══════════════════════════════════════════════════════
 -- 4. TASKS TABLE (Kanban cards)
 -- ═══════════════════════════════════════════════════════
 
-CREATE TABLE tasks (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE IF NOT EXISTS tasks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
@@ -75,7 +75,7 @@ CREATE TABLE tasks (
   priority TEXT DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
   assignee_id UUID REFERENCES users(id),
   reporter_id UUID REFERENCES users(id),
-  position INTEGER DEFAULT 0, -- for drag-and-drop ordering
+  position INTEGER DEFAULT 0,
   due_date DATE,
   completed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -83,18 +83,18 @@ CREATE TABLE tasks (
 );
 
 -- Indexes
-CREATE INDEX idx_tasks_tenant_id ON tasks(tenant_id);
-CREATE INDEX idx_tasks_project_id ON tasks(project_id);
-CREATE INDEX idx_tasks_assignee_id ON tasks(assignee_id);
-CREATE INDEX idx_tasks_status ON tasks(status);
-CREATE INDEX idx_tasks_priority ON tasks(priority);
+CREATE INDEX IF NOT EXISTS idx_tasks_tenant_id ON tasks(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_project_id ON tasks(project_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_assignee_id ON tasks(assignee_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+CREATE INDEX IF NOT EXISTS idx_tasks_priority ON tasks(priority);
 
 -- ═══════════════════════════════════════════════════════
 -- 5. COMMENTS TABLE
 -- ═══════════════════════════════════════════════════════
 
-CREATE TABLE comments (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE IF NOT EXISTS comments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
   author_id UUID NOT NULL REFERENCES users(id),
@@ -104,9 +104,9 @@ CREATE TABLE comments (
 );
 
 -- Indexes
-CREATE INDEX idx_comments_tenant_id ON comments(tenant_id);
-CREATE INDEX idx_comments_task_id ON comments(task_id);
-CREATE INDEX idx_comments_author_id ON comments(author_id);
+CREATE INDEX IF NOT EXISTS idx_comments_tenant_id ON comments(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_comments_task_id ON comments(task_id);
+CREATE INDEX IF NOT EXISTS idx_comments_author_id ON comments(author_id);
 
 -- ═══════════════════════════════════════════════════════
 -- 6. ENABLE ROW LEVEL SECURITY (RLS)
@@ -121,6 +121,13 @@ ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
 -- ═══════════════════════════════════════════════════════
 -- 7. RLS POLICIES - TENANT ISOLATION
 -- ═══════════════════════════════════════════════════════
+
+-- Drop existing policies if any (for idempotency)
+DROP POLICY IF EXISTS "tenant_isolation" ON tenants;
+DROP POLICY IF EXISTS "tenant_isolation_users" ON users;
+DROP POLICY IF EXISTS "tenant_isolation_projects" ON projects;
+DROP POLICY IF EXISTS "tenant_isolation_tasks" ON tasks;
+DROP POLICY IF EXISTS "tenant_isolation_comments" ON comments;
 
 -- Helper function to get user's tenant_id
 CREATE OR REPLACE FUNCTION get_user_tenant_id()
@@ -162,6 +169,15 @@ CREATE POLICY "tenant_isolation_comments" ON comments
 -- ═══════════════════════════════════════════════════════
 -- 8. RLS POLICIES - ROLE-BASED ACCESS
 -- ═══════════════════════════════════════════════════════
+
+-- Drop existing role-based policies
+DROP POLICY IF EXISTS "admin_manage_users" ON users;
+DROP POLICY IF EXISTS "users_read_projects" ON projects;
+DROP POLICY IF EXISTS "admin_manager_write_projects" ON projects;
+DROP POLICY IF EXISTS "users_read_tasks" ON tasks;
+DROP POLICY IF EXISTS "assignee_write_tasks" ON tasks;
+DROP POLICY IF EXISTS "users_read_comments" ON comments;
+DROP POLICY IF EXISTS "users_write_comments" ON comments;
 
 -- USERS: Admin can manage all users in tenant
 CREATE POLICY "admin_manage_users" ON users
@@ -229,26 +245,31 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_tenants_updated_at ON tenants;
 CREATE TRIGGER update_tenants_updated_at
   BEFORE UPDATE ON tenants
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at
   BEFORE UPDATE ON users
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_projects_updated_at ON projects;
 CREATE TRIGGER update_projects_updated_at
   BEFORE UPDATE ON projects
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_tasks_updated_at ON tasks;
 CREATE TRIGGER update_tasks_updated_at
   BEFORE UPDATE ON tasks
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_comments_updated_at ON comments;
 CREATE TRIGGER update_comments_updated_at
   BEFORE UPDATE ON comments
   FOR EACH ROW
@@ -261,22 +282,33 @@ CREATE TRIGGER update_comments_updated_at
 -- Function to handle new user signup
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+  default_tenant_id UUID;
 BEGIN
-  -- Insert user record with default tenant (first tenant created)
-  -- Note: In production, you'll want to handle tenant assignment differently
+  -- Get first tenant (for development)
+  SELECT id INTO default_tenant_id FROM tenants ORDER BY created_at LIMIT 1;
+  
+  -- If no tenant exists, create one
+  IF default_tenant_id IS NULL THEN
+    INSERT INTO tenants (name, slug) VALUES ('Default Tenant', 'default')
+    RETURNING id INTO default_tenant_id;
+  END IF;
+  
+  -- Insert user record
   INSERT INTO users (id, email, tenant_id, role, full_name)
   VALUES (
     NEW.id,
     NEW.email,
-    (SELECT id FROM tenants ORDER BY created_at LIMIT 1), -- Default to first tenant
-    'member', -- Default role
-    NEW.raw_user_meta_data->>'full_name'
+    default_tenant_id,
+    'member',
+    COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1))
   );
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Trigger on auth.users
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW
@@ -286,11 +318,10 @@ CREATE TRIGGER on_auth_user_created
 -- 11. SEED DATA (FOR DEVELOPMENT)
 -- ═══════════════════════════════════════════════════════
 
--- Create default tenant
+-- Create default tenant (idempotent)
 INSERT INTO tenants (id, name, slug) VALUES
-  ('00000000-0000-0000-0000-000000000001', 'Default Tenant', 'default');
-
--- Note: Users will be created automatically via auth.signup()
+  ('00000000-0000-0000-0000-000000000001', 'Default Tenant', 'default')
+ON CONFLICT (slug) DO NOTHING;
 
 -- ═══════════════════════════════════════════════════════
 -- 12. COMMENTS & DOCUMENTATION
