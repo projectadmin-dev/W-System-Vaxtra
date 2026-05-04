@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
+import { cn } from '@/lib/utils'
 
 export default function DashboardLayout({
   children,
@@ -34,7 +35,4 @@ export default function DashboardLayout({
     </div>
   )
 }
-
-function cn(...classes: (string | undefined | null | false)[]) {
-  return classes.filter(Boolean).join(' ')
 }
