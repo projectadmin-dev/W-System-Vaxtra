@@ -45,7 +45,7 @@ export default async function DashboardPage() {
     .eq('tenant_id', profile?.tenant_id)
 
   const initials = profile?.full_name
-    ? profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase()
+    ? profile.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase()
     : user.email?.charAt(0).toUpperCase() || 'U'
 
   return (
