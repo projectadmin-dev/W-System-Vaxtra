@@ -100,8 +100,12 @@ export default function Home() {
         </div>
 
         <div className="flex gap-4 justify-center">
-          <Button size="lg">Get Started</Button>
-          <Button variant="outline" size="lg">View Documentation</Button>
+          <Button size="lg" asChild>
+            <a href="/signup">Get Started</a>
+          </Button>
+          <Button variant="outline" size="lg" asChild>
+            <a href="/login">Sign In</a>
+          </Button>
         </div>
 
         <div className="text-center text-sm text-muted-foreground">
