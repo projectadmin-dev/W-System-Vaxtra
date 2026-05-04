@@ -3,9 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "PORT=3030 next dev --turbopack",
+    "dev:3000": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
+    "start:3030": "PORT=3030 next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
   },
