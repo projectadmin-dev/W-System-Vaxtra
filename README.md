@@ -1,5 +1,11 @@
 # W System v2 — Setup Guide
 
+![GitHub](https://img.shields.io/github/forks/projectadmin-dev/W-System-Vaxtra?style=flat-square)
+![GitHub stars](https://img.shields.io/github/stars/projectadmin-dev/W-System-Vaxtra?style=flat-square)
+![GitHub license](https://img.shields.io/github/license/projectadmin-dev/W-System-Vaxtra?style=flat-square)
+
+**Repo:** https://github.com/projectadmin-dev/W-System-Vaxtra
+
 **Fresh Supabase project untuk W System v2**
 Created: 2026-05-04
 
