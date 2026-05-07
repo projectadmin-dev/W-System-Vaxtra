@@ -13,7 +13,7 @@ export default function DashboardLayout({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-background">
       {/* Desktop Sidebar */}
       <div className="hidden md:block">
         <Sidebar
@@ -22,15 +22,20 @@ export default function DashboardLayout({
         />
       </div>
 
-      {/* Main Content */}
+      {/* Main Content Area */}
       <div
         className={cn(
           'flex flex-1 flex-col overflow-hidden transition-all duration-300',
-          sidebarCollapsed ? 'md:ml-16' : 'md:ml-64'
+          sidebarCollapsed ? 'md:ml-[64px]' : 'md:ml-[256px]'
         )}
       >
+        {/* Top Header */}
         <Header />
-        <main className="flex-1 overflow-auto">{children}</main>
+        
+        {/* Page Content */}
+        <main className="flex-1 overflow-auto p-6">
+          {children}
+        </main>
       </div>
     </div>
   )
