@@ -1,0 +1,14 @@
+node_modules
+.git
+.gitignore
+.vscode
+.idea
+*.log
+pm2-*.log
+.vercel
+.turbo
+coverage
+dist
+build
+out
+.next
